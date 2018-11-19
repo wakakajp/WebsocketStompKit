@@ -122,8 +122,9 @@
 + (STOMPFrame *) STOMPFrameFromData:(NSData *)data {
     NSData *strData = [data subdataWithRange:NSMakeRange(0, [data length])];
     NSString *msg = [[NSString alloc] initWithData:strData encoding:NSUTF8StringEncoding];
-    LogDebug(@"<<< %@", msg);
-    NSMutableArray *contents = (NSMutableArray *)[[msg componentsSeparatedByString:kLineFeed] mutableCopy];
+//    LogDebug(@"<<< %@", msg);
+    NSArray *temp = [msg componentsSeparatedByString:kLineFeed];
+    NSMutableArray *contents = (temp ? temp : @[]).mutableCopy;
     while ([contents count] > 0 && [contents[0] isEqual:@""]) {
         [contents removeObjectAtIndex:0];
     }
