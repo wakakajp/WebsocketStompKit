@@ -119,23 +119,36 @@
     return [[self toString] dataUsingEncoding:NSUTF8StringEncoding];
 }
 
-+ (STOMPFrame *) STOMPFrameFromData:(NSData *)data {
++ (nullable STOMPFrame *) STOMPFrameFromData:(NSData *)data {
     NSData *strData = [data subdataWithRange:NSMakeRange(0, [data length])];
     NSString *msg = [[NSString alloc] initWithData:strData encoding:NSUTF8StringEncoding];
-//    LogDebug(@"<<< %@", msg);
+    //    LogDebug(@"<<< %@", msg);
     NSArray *temp = [msg componentsSeparatedByString:kLineFeed];
     NSMutableArray *contents = (temp ? temp : @[]).mutableCopy;
     while ([contents count] > 0 && [contents[0] isEqual:@""]) {
         [contents removeObjectAtIndex:0];
+    }
+    
+    if (contents.count < 1) {
+        return nil;
     }
     NSString *command = [[contents objectAtIndex:0] copy];
     NSMutableDictionary *headers = [[NSMutableDictionary alloc] init];
     NSMutableString *body = [[NSMutableString alloc] init];
     BOOL hasHeaders = NO;
     [contents removeObjectAtIndex:0];
+    
+    if (contents.count < 1) {
+        return nil;
+    }
     for(NSString *line in contents) {
         if(hasHeaders) {
-            [body appendString:line];
+            for (int i=0; i < [line length]; i++) {
+                unichar c = [line characterAtIndex:i];
+                if (c != '\x00') {
+                    [body appendString:[NSString stringWithFormat:@"%c", c]];
+                }
+            }
         } else {
             if ([line isEqual:@""]) {
                 hasHeaders = YES;
@@ -148,7 +161,7 @@
             }
         }
     }
-    return [[STOMPFrame alloc] initWithCommand:command headers:headers body:[body stringByTrimmingCharactersInSet:[NSCharacterSet controlCharacterSet]]];
+    return [[STOMPFrame alloc] initWithCommand:command headers:headers body:body];
 }
 
 - (NSString *)description {
@@ -575,6 +588,7 @@ CFAbsoluteTime serverActivity;
 - (void)websocket:(JFRWebSocket*)socket didReceiveData:(NSData*)data {
     serverActivity = CFAbsoluteTimeGetCurrent();
     STOMPFrame *frame = [STOMPFrame STOMPFrameFromData:data];
+    if (!frame) return;
     [self receivedFrame:frame];
 }
 
@@ -583,6 +597,7 @@ CFAbsoluteTime serverActivity;
 - (void)websocket:(JFRWebSocket*)socket didReceiveMessage:(NSString *)string {
     serverActivity = CFAbsoluteTimeGetCurrent();
     STOMPFrame *frame = [STOMPFrame STOMPFrameFromData:[string dataUsingEncoding:NSUTF8StringEncoding]];
+    if (!frame) return;
     [self receivedFrame:frame];
 }
 
